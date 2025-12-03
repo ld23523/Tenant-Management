@@ -4,7 +4,7 @@ from typing import List, Tuple, Optional
 DB_CONFIG = {
     "host": "localhost",
     "user": "root",
-    "password": "your_password*",  # <- put your MySQL password
+    "password": "pass",  # <- put your MySQL password
     "database": "tenant_management",
 }
 
