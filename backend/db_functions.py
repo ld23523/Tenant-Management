@@ -1,5 +1,6 @@
 import mysql.connector
 from typing import List, Tuple, Optional
+from datetime import date
 
 DB_CONFIG = {
     "host": "localhost",
@@ -731,6 +732,95 @@ def get_all_open_requests() -> list[tuple]:
         ORDER BY RequestDate
         """
     )
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return rows
+
+# ------------------ LATE FEES (ADV) ------------------ #
+
+def get_late_fee_policy():
+    conn = get_connection()
+    cur = conn.cursor(dictionary=True)
+    cur.execute("""
+        SELECT PolicyID, GracePeriodDays, FlatLateFee
+        FROM LateFeePolicy
+        ORDER BY PolicyID DESC
+        LIMIT 1
+    """)
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+    return row
+
+
+def update_late_fee_policy(grace_days: int, flat_fee: float):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    # simplest approach: insert new policy row (keeps history)
+    cur.execute(
+        "INSERT INTO LateFeePolicy (GracePeriodDays, FlatLateFee) VALUES (%s, %s)",
+        (grace_days, flat_fee),
+    )
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def process_late_fees():
+    """
+    Insert a late-fee assessment for overdue unpaid invoices,
+    once per invoice per day.
+    """
+    policy = get_late_fee_policy()
+    grace_days = int(policy["GracePeriodDays"])
+    flat_fee = float(policy["FlatLateFee"])
+
+    today = date.today()
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        INSERT INTO LateFeeAssessment (InvoiceNumber, AssessmentDate, CalculatedFee)
+        SELECT i.InvoiceNumber, %s, %s
+        FROM InvoicePayment i
+        WHERE i.PaidStatus = 'Unpaid'
+          AND i.DueDate < DATE_SUB(%s, INTERVAL %s DAY)
+          AND NOT EXISTS (
+              SELECT 1 FROM LateFeeAssessment l
+              WHERE l.InvoiceNumber = i.InvoiceNumber
+                AND l.AssessmentDate = %s
+          )
+        """,
+        (today, flat_fee, today, grace_days, today),
+    )
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def get_all_late_fees():
+    conn = get_connection()
+    cur = conn.cursor(dictionary=True)
+    cur.execute("""
+        SELECT
+            l.AssessmentID,
+            l.InvoiceNumber,
+            l.AssessmentDate,
+            l.CalculatedFee,
+            i.DueDate,
+            i.Amount,
+            i.PaidStatus,
+            i.InvoiceDescription
+        FROM LateFeeAssessment l
+        JOIN InvoicePayment i ON i.InvoiceNumber = l.InvoiceNumber
+        ORDER BY l.AssessmentDate DESC
+    """)
     rows = cur.fetchall()
     cur.close()
     conn.close()
