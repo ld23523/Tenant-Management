@@ -55,3 +55,7 @@ INSERT INTO HasPayment (InvoiceNumber, LeaseID) VALUES
 (1, 1),
 (2, 2),
 (3, 3);
+
+-- LATE FEE POLICY DEFAULT
+INSERT INTO LateFeePolicy (GracePeriodDays, FlatLateFee)
+VALUES (5, 50.00);
