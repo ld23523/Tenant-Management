@@ -91,3 +91,20 @@ CREATE TABLE HasPayment (
     FOREIGN KEY (InvoiceNumber) REFERENCES InvoicePayment(InvoiceNumber),
     FOREIGN KEY (LeaseID)       REFERENCES Lease(LeaseID)
 );
+
+-- Late Fee Management (ADV)
+CREATE TABLE LateFeePolicy (
+    PolicyID INT AUTO_INCREMENT PRIMARY KEY,
+    GracePeriodDays INT NOT NULL DEFAULT 5,
+    FlatLateFee DECIMAL(10,2) NOT NULL DEFAULT 50.00
+);
+
+CREATE TABLE LateFeeAssessment (
+    AssessmentID INT AUTO_INCREMENT PRIMARY KEY,
+    InvoiceNumber INT NOT NULL,
+    AssessmentDate DATE NOT NULL,
+    CalculatedFee DECIMAL(10,2) NOT NULL,
+    FOREIGN KEY (InvoiceNumber) REFERENCES InvoicePayment(InvoiceNumber)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE
+);
