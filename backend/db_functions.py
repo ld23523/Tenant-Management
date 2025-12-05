@@ -1,6 +1,5 @@
 import mysql.connector
 from typing import List, Tuple, Optional
-from datetime import date
 
 DB_CONFIG = {
     "host": "localhost",
